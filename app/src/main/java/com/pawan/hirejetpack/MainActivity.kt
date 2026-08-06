@@ -12,89 +12,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import kotlinx.coroutines.flow.MutableStateFlow
+import com.pawan.hirejetpack.presentation.state.LoginUiState
+import com.pawan.hirejetpack.presentation.state.LoginViewModel
+import com.pawan.hirejetpack.presentation.ui.Screen
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 
-// ============================================================================
-// SECTION 1: OOP DATA MODELS & ABSTRACTION (Domain Layer)
-// ============================================================================
 
-/**
- * [UserProfile] Data Model.
- *
- * OOP Concept: Encapsulation
- * Groups related user attributes into a single, immutable object.
- */
-data class UserProfile(
-    val name: String,
-    val email: String,
-    val role: String
-)
-
-/**
- * [LoginUiState] Sealed Interface.
- *
- * OOP Concept: Abstraction & Polymorphism
- * Defines a strictly bounded set of distinct UI states. The UI layer polymorphically
- * handles whichever concrete state subclass is currently active.
- */
-sealed interface LoginUiState {
-    object Idle : LoginUiState
-    object Loading : LoginUiState
-    data class Success(val user: UserProfile) : LoginUiState
-    data class Error(val message: String) : LoginUiState
-}
-
-// ============================================================================
-// SECTION 2: VIEWMODEL / STATE HOLDER (OOP Encapsulation & SRP)
-// ============================================================================
-
-/**
- * [LoginViewModel] manages UI business logic for authentication.
- *
- * OOP Concept: Single Responsibility Principle (SRP) & Encapsulation
- * Keeps business logic entirely separate from UI rendering logic.
- * Encapsulates mutable internal state [_uiState] behind a public, read-only [uiState].
- */
-class LoginViewModel : ViewModel() {
-
-    // Encapsulated internal mutable state (Private)
-    private val _uiState = MutableStateFlow<LoginUiState>(LoginUiState.Idle)
-
-    // Public read-only exposure of the state (Abstraction)
-    val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
-
-    /**
-     * Simulates authentication request.
-     */
-    fun performLogin(email: String, pass: String) {
-        if (email.isBlank() || pass.isBlank()) {
-            _uiState.value = LoginUiState.Error("Email and password cannot be empty.")
-            return
-        }
-
-        _uiState.value = LoginUiState.Loading
-
-        // Mock authentication success
-        val user = UserProfile(
-            name = "Pawan Kumar",
-            email = email,
-            role = "Android Developer"
-        )
-        _uiState.value = LoginUiState.Success(user)
-    }
-
-    fun resetState() {
-        _uiState.value = LoginUiState.Idle
-    }
-}
 
 // ============================================================================
 // SECTION 3: MAIN ACTIVITY ENTRY POINT
@@ -121,18 +49,6 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-// ============================================================================
-// SECTION 4: NAVIGATION & APP STRUCTURE
-// ============================================================================
-
-/**
- * Sealed class defining application routes.
- * OOP Concept: Type-Safe Abstraction
- */
-sealed class Screen(val route: String) {
-    object Login : Screen("login_screen")
-    object Profile : Screen("profile_screen")
-}
 
 /**
  * KEYWORD: [@Composable]
@@ -195,7 +111,7 @@ fun LoginScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    // Trigger navigation side-effect when state turns to Success
+    // Trigger navigation sideeffect when state turns to Success
     LaunchedEffect(uiState) {
         if (uiState is LoginUiState.Success) {
             onLoginSuccess()
