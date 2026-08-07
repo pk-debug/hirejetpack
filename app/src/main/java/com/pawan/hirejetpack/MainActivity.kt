@@ -19,10 +19,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.pawan.hirejetpack.presentation.state.LoginUiState
 import com.pawan.hirejetpack.presentation.state.LoginViewModel
-import com.pawan.hirejetpack.presentation.ui.LoginScreen
-import com.pawan.hirejetpack.presentation.ui.Screen
-import kotlinx.coroutines.flow.StateFlow
-
+import com.pawan.hirejetpack.presentation.ui.login.LoginScreen
+import com.pawan.hirejetpack.presentation.navigation.Screen
 
 
 // ============================================================================

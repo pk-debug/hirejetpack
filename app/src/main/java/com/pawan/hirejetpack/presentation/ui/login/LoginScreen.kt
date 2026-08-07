@@ -1,4 +1,4 @@
-package com.pawan.hirejetpack.presentation.ui
+package com.pawan.hirejetpack.presentation.ui.login
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
