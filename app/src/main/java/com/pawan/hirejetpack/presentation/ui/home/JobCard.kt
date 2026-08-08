@@ -1,7 +1,7 @@
 package com.pawan.hirejetpack.presentation.ui.home
 
-
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -19,15 +19,18 @@ import com.pawan.hirejetpack.domain.Job
 /**
  * [JobCard] — one row in the job feed.
  *
- * Staff note: this takes a plain [Job] and a `Unit`-returning body — no
- * ViewModel reference, no navigation callback baked in. Keeping leaf UI
- * components state-less and dumb like this is what makes them trivial to
+ * Staff note: this takes a plain [Job] and a simple `onClick` lambda — no
+ * ViewModel reference, no NavController import, no knowledge of *where*
+ * tapping it leads. That decision belongs to the caller (HomeScreen).
+ * Keeping leaf UI components dumb like this is what makes them trivial to
  * preview and unit-test in isolation.
  */
 @Composable
-fun JobCard(job: Job) {
+fun JobCard(job: Job, onClick: () -> Unit) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         shape = RoundedCornerShape(14.dp)
     ) {

@@ -13,6 +13,14 @@ import com.pawan.hirejetpack.domain.Job
  * in theory.
  */
 object JobRepository {
+
+    /**
+     * Looks up a single job by id — used by the detail screen.
+     * Returns null if not found, so callers must handle the "missing" case
+     * explicitly rather than assuming success.
+     */
+    fun getJobById(id: String): Job? = getJobs().find { it.id == id }
+
     fun getJobs(): List<Job> = listOf(
         Job("1", "Android Engineer", "Zenith Labs", "Bengaluru", "₹18–28 LPA", listOf("Kotlin", "Compose")),
         Job("2", "Staff Mobile Engineer", "Northwind", "Remote", "₹40–55 LPA", listOf("KMP", "Architecture")),
