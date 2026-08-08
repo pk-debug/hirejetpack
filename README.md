@@ -10,6 +10,7 @@ A modern, single-activity Android application built with **Jetpack Compose**, im
 - **MVVM Architecture:** Clean separation of UI logic, state, and data.
 - **Navigation Drawer:** Slide-out `ModalNavigationDrawer` on the Home screen with a profile summary header, Home/Profile/Logout entries.
 - **Job Listing Feed:** Scrollable `LazyColumn` of job cards (title, company, location, salary, skill tags), backed by a mock `JobRepository`.
+- **Job Detail Screen:** Tapping a job card navigates to a full detail view via a parameterized route (`job_detail_screen/{jobId}`), with dedicated Loading / Found / Not-Found states.
 - **Redesigned Profile Screen:** Gradient header, circular initials avatar, role badge, and info displayed in an elevated card.
 - **Type-Safe Navigation:** Built with `navigation-compose`, routes defined as a sealed class, backstack cleared correctly on login/logout.
 - **Reactive State Management:** Kotlin `StateFlow` per screen, collected safely in Compose via `collectAsState`.
@@ -23,9 +24,13 @@ A modern, single-activity Android application built with **Jetpack Compose**, im
 Login Screen
      │  (successful login)
      ▼
-Home Screen  ──(drawer → Profile, or profile icon in top bar)──▶  Profile Screen
-     │                                                                  │
-     └──────────────────────── Logout (from either screen) ────────────┘
+Home Screen  ──(tap a job card)──▶  Job Detail Screen
+     │      │                              │
+     │      └──(Back)──────────────────────┘
+     │
+     └──(drawer → Profile, or profile icon in top bar)──▶  Profile Screen
+     │                                                              │
+     └──────────────────── Logout (from either screen) ────────────┘
                                         │
                                         ▼
                                   Login Screen
@@ -43,17 +48,19 @@ com.pawan.hirejetpack/
 │   └── Job.kt                      # One job listing
 │
 ├── data/                           # Data sources
-│   └── JobRepository.kt            # Mock job data (Retrofit-shaped signature for easy swap later)
+│   └── JobRepository.kt            # Mock job data + getJobById() lookup (Retrofit-shaped for easy swap later)
 │
 ├── presentation/
-│   ├── state/                      # ViewModels + UI state classes
+│   ├── state/                      # ViewModels + UI state classes, one pair per screen
 │   │   ├── LoginUiState.kt         # Idle / Loading / Success / Error
 │   │   ├── LoginViewModel.kt
 │   │   ├── HomeUiState.kt          # jobs + isLoading
-│   │   └── HomeViewModel.kt
+│   │   ├── HomeViewModel.kt
+│   │   ├── JobDetailUiState.kt     # Loading / Found / NotFound
+│   │   └── JobDetailViewModel.kt   # Reads jobId via SavedStateHandle, re-fetches from JobRepository
 │   │
 │   ├── navigation/                 # Routing
-│   │   ├── Screen.kt               # Sealed class of routes (Login / Home / Profile)
+│   │   ├── Screen.kt               # Sealed class of routes, incl. parameterized JobDetail
 │   │   └── AppNavigation.kt        # NavHost graph wiring screens together
 │   │
 │   └── ui/                         # Compose screens, grouped by feature
@@ -64,7 +71,9 @@ com.pawan.hirejetpack/
 │       ├── home/
 │       │   ├── HomeScreen.kt       # Drawer + job feed scaffold
 │       │   ├── AppDrawerContent.kt # Drawer panel contents
-│       │   └── JobCard.kt          # One row in the job feed
+│       │   └── JobCard.kt          # One row in the job feed — clickable, navigates to detail
+│       ├── jobdetail/
+│       │   └── JobDetailScreen.kt  # Full job info, skill tags, Apply Now (action not yet wired)
 │       └── profile/
 │           └── ProfileScreen.kt    # Gradient header + info card
 │
@@ -101,6 +110,8 @@ com.pawan.hirejetpack/
 | `rememberCoroutineScope` | Provides a coroutine scope tied to the composition, used to call suspend functions (like opening the drawer) from click handlers. |
 | `Scaffold` | Material layout structure providing slots for TopBar, BottomBar, and body content. |
 | `LazyColumn` | Lazily-rendered scrollable list — only composes items currently visible on screen. |
+| `SavedStateHandle` | Key-value bag holding the current destination's navigation arguments; injected automatically into a ViewModel and survives process death. |
+| `navArgument` | Declares a named, typed argument (e.g. `jobId: String`) on a `composable(...)` route, enabling parameterized navigation like `job_detail_screen/{jobId}`. |
 
 ---
 
@@ -143,13 +154,16 @@ dependencies {
 4. Perform a **Gradle Sync**.
 5. Run the application on an Emulator or connected Physical Device (`Shift + F10`).
 6. Enter any sample email and password on the Login screen — this navigates to the Home screen's job feed.
-7. Tap the menu icon (or the profile icon in the top bar) to open the drawer and reach the Profile screen.
+7. Tap a job card to open its detail screen (Back returns to the feed).
+8. Tap the menu icon (or the profile icon in the top bar) to open the drawer and reach the Profile screen.
 
 ---
 
 ## 🔮 Next Steps / Extension Ideas
 
-- Replace `JobRepository`'s hardcoded list with a real Retrofit-backed data source — the function signature is already shaped for this swap.
-- Add a job-detail screen (feed → tap a job → detail) using the same navigation pattern.
+- Wire up the **Apply Now** button on the Job Detail screen (currently a `TODO`) — likely a confirmation dialog or a short application form.
+- Replace `JobRepository`'s hardcoded list with a real Retrofit-backed data source — `getJobs()` and `getJobById()` are already shaped for this swap.
+- Add search/filter on the Home feed (by title, location, or tag).
+- Add bookmarking/saving jobs, likely backed by local storage (Room or DataStore) rather than in-memory state.
 - Introduce a `domain`-layer `UseCase` (e.g. `GetJobsUseCase`) once business rules around filtering/sorting jobs get more complex than "return the list."
 - If the app grows past a handful of features, consider splitting `domain`/`data` into `core-model`/`core-network` modules, and each `presentation/ui/<feature>` folder into its own `feature-*` Gradle module (see multi-module architecture notes).

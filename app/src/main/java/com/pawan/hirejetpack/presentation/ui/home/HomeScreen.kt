@@ -36,6 +36,7 @@ fun HomeScreen(
     homeViewModel: HomeViewModel,
     loginViewModel: LoginViewModel,
     onNavigateToProfile: () -> Unit,
+    onJobClick: (String) -> Unit,
     onLogout: () -> Unit
 ) {
     val homeState by homeViewModel.uiState.collectAsState()
@@ -99,7 +100,7 @@ fun HomeScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(homeState.jobs, key = { it.id }) { job ->
-                        JobCard(job)
+                        JobCard(job = job, onClick = { onJobClick(job.id) })
                     }
                 }
             }

@@ -1,17 +1,17 @@
 package com.pawan.hirejetpack.presentation.navigation
 
-// ============================================================================
-// SECTION 4: NAVIGATION & APP STRUCTURE
-// ============================================================================
-
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.pawan.hirejetpack.presentation.state.HomeViewModel
+import com.pawan.hirejetpack.presentation.state.JobDetailViewModel
 import com.pawan.hirejetpack.presentation.state.LoginViewModel
 import com.pawan.hirejetpack.presentation.ui.home.HomeScreen
+import com.pawan.hirejetpack.presentation.ui.jobdetail.JobDetailScreen
 import com.pawan.hirejetpack.presentation.ui.login.LoginScreen
 import com.pawan.hirejetpack.presentation.ui.profile.ProfileScreen
 
@@ -60,12 +60,25 @@ fun AppNavigation() {
                 homeViewModel = homeViewModel,
                 loginViewModel = loginViewModel,
                 onNavigateToProfile = { navController.navigate(Screen.Profile.route) },
+                onJobClick = { jobId -> navController.navigate(Screen.JobDetail.createRoute(jobId)) },
                 onLogout = {
                     loginViewModel.resetState()
                     navController.navigate(Screen.Login.route) {
                         popUpTo(Screen.Home.route) { inclusive = true }
                     }
                 }
+            )
+        }
+        composable(
+            route = Screen.JobDetail.route,
+            arguments = listOf(navArgument("jobId") { type = NavType.StringType })
+        ) {
+            // No need to read the argument here — JobDetailViewModel pulls
+            // it from its injected SavedStateHandle instead.
+            val jobDetailViewModel: JobDetailViewModel = viewModel()
+            JobDetailScreen(
+                viewModel = jobDetailViewModel,
+                onBack = { navController.popBackStack() }
             )
         }
         composable(Screen.Profile.route) {
