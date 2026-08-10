@@ -13,6 +13,9 @@ import com.pawan.hirejetpack.domain.Job
  */
 sealed interface JobDetailUiState {
     object Loading : JobDetailUiState
-    data class Found(val job: Job) : JobDetailUiState
+    data class Found(
+        val job: Job,
+        val applicationStatus: ApplicationStatus = ApplicationStatus.Idle
+    ) : JobDetailUiState
     object NotFound : JobDetailUiState
 }
