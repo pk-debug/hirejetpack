@@ -3,9 +3,12 @@ package com.pawan.hirejetpack.presentation.ui.home
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -82,28 +85,86 @@ fun HomeScreen(
                 )
             }
         ) { paddingValues ->
-            if (homeState.jobs.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("No jobs available right now.")
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(homeState.jobs, key = { it.id }) { job ->
-                        JobCard(job = job, onClick = { onJobClick(job.id) })
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
+                JobSearchField(
+                    onQueryChanged = homeViewModel::onSearchQueryChanged,
+                    onClear = homeViewModel::onClearSearch
+                )
+
+                when {
+                    homeState.jobs.isNotEmpty() -> {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            items(homeState.jobs, key = { it.id }) { job ->
+                                JobCard(job = job, onClick = { onJobClick(job.id) })
+                            }
+                        }
+                    }
+
+                    homeState.searchQuery.isNotBlank() -> {
+                        // Jobs exist overall, this specific search just has no matches
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text("No jobs match \"${homeState.searchQuery}\".")
+                        }
+                    }
+
+                    else -> {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text("No jobs available right now.")
+                        }
                     }
                 }
             }
         }
     }
+}
+
+/**
+ * [JobSearchField] — the search input row.
+ *
+ * Staff note: this keeps its OWN local `remember { mutableStateOf(...) }`
+ * for the text being typed, separate from [HomeUiState.searchQuery]. The
+ * ViewModel's copy only updates after the 300ms debounce, but the
+ * TextField itself must reflect every keystroke immediately — otherwise
+ * the user would see their own typing lag behind their finger. Local UI
+ * state and debounced app state serving two different jobs, on purpose.
+ */
+@Composable
+private fun JobSearchField(
+    onQueryChanged: (String) -> Unit,
+    onClear: () -> Unit
+) {
+    var text by remember { mutableStateOf("") }
+
+    OutlinedTextField(
+        value = text,
+        onValueChange = {
+            text = it
+            onQueryChanged(it)
+        },
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        placeholder = { Text("Search title, company, location, skill...") },
+        singleLine = true,
+        shape = RoundedCornerShape(12.dp),
+        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+        trailingIcon = {
+            if (text.isNotEmpty()) {
+                IconButton(onClick = {
+                    text = ""
+                    onClear()
+                }) {
+                    Icon(Icons.Filled.Clear, contentDescription = "Clear search")
+                }
+            }
+        }
+    )
 }
