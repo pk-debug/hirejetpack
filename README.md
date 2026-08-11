@@ -12,6 +12,7 @@ A modern, single-activity Android application built with **Jetpack Compose**, im
 - **Job Listing Feed:** Scrollable `LazyColumn` of job cards (title, company, location, salary, skill tags), backed by a mock `JobRepository`.
 - **Job Detail Screen:** Tapping a job card navigates to a full detail view via a parameterized route (`job_detail_screen/{jobId}`), with dedicated Loading / Found / Not-Found states.
 - **Apply Flow:** Confirmation dialog → simulated submission → "Applied" state, modeled as its own `ApplicationStatus` sub-state (Idle / Submitting / Applied) so the button can never show a contradictory combination.
+- **Debounced Search:** Filter the job feed by title, company, location, or skill tag. Search input is debounced (300ms) via Kotlin Flow operators so filtering doesn't run on every single keystroke.
 - **Redesigned Profile Screen:** Gradient header, circular initials avatar, role badge, and info displayed in an elevated card.
 - **Type-Safe Navigation:** Built with `navigation-compose`, routes defined as a sealed class, backstack cleared correctly on login/logout.
 - **Reactive State Management:** Kotlin `StateFlow` per screen, collected safely in Compose via `collectAsState`.
@@ -55,8 +56,8 @@ com.pawan.hirejetpack/
 │   ├── state/                      # ViewModels + UI state classes, one pair per screen
 │   │   ├── LoginUiState.kt         # Idle / Loading / Success / Error
 │   │   ├── LoginViewModel.kt
-│   │   ├── HomeUiState.kt          # jobs + isLoading
-│   │   ├── HomeViewModel.kt
+│   │   ├── HomeUiState.kt          # jobs (filtered) + searchQuery + isLoading
+│   │   ├── HomeViewModel.kt        # Debounced search via Flow: debounce → distinctUntilChanged → map → stateIn
 │   │   ├── JobDetailUiState.kt     # Loading / Found (+ ApplicationStatus) / NotFound
 │   │   ├── JobDetailViewModel.kt   # Reads jobId via SavedStateHandle, re-fetches from JobRepository, drives applyToJob()
 │   │   └── ApplicationStatus.kt    # Idle / Submitting / Applied sub-state for the apply flow
@@ -71,7 +72,7 @@ com.pawan.hirejetpack/
 │       ├── login/
 │       │   └── LoginScreen.kt
 │       ├── home/
-│       │   ├── HomeScreen.kt       # Drawer + job feed scaffold
+│       │   ├── HomeScreen.kt       # Drawer + search bar + job feed scaffold (incl. private JobSearchField)
 │       │   ├── AppDrawerContent.kt # Drawer panel contents
 │       │   └── JobCard.kt          # One row in the job feed — clickable, navigates to detail
 │       ├── jobdetail/
@@ -114,6 +115,8 @@ com.pawan.hirejetpack/
 | `LazyColumn` | Lazily-rendered scrollable list — only composes items currently visible on screen. |
 | `SavedStateHandle` | Key-value bag holding the current destination's navigation arguments; injected automatically into a ViewModel and survives process death. |
 | `navArgument` | Declares a named, typed argument (e.g. `jobId: String`) on a `composable(...)` route, enabling parameterized navigation like `job_detail_screen/{jobId}`. |
+| `debounce` / `distinctUntilChanged` | Flow operators: `debounce` waits for a pause between emissions before passing one through (used here to avoid filtering on every keystroke); `distinctUntilChanged` skips emissions equal to the previous one. |
+| `stateIn` | Converts a cold `Flow` into a hot, shareable `StateFlow`, with a `SharingStarted` policy controlling when the upstream work actually runs. |
 
 ---
 
@@ -156,17 +159,18 @@ dependencies {
 4. Perform a **Gradle Sync**.
 5. Run the application on an Emulator or connected Physical Device (`Shift + F10`).
 6. Enter any sample email and password on the Login screen — this navigates to the Home screen's job feed.
-7. Tap a job card to open its detail screen, then **Apply Now** to try the confirm → submit → applied flow (Back returns to the feed).
-8. Tap the menu icon (or the profile icon in the top bar) to open the drawer and reach the Profile screen.
+7. Type in the search bar to filter jobs by title, company, location, or skill (filtering kicks in ~300ms after you stop typing).
+8. Tap a job card to open its detail screen, then **Apply Now** to try the confirm → submit → applied flow (Back returns to the feed).
+9. Tap the menu icon (or the profile icon in the top bar) to open the drawer and reach the Profile screen.
 
 ---
 
 ## 🔮 Next Steps / Extension Ideas
 
+- Add filter chips (by tag) alongside the text search, so users can narrow by skill with a tap instead of typing.
 - Replace the simulated `delay(900)` in `applyToJob()` with a real suspend repository call once a backend exists.
 - Persist application status (currently lost on process death / re-navigation) — e.g. a `Set<String>` of applied job ids in DataStore.
-- Replace `JobRepository`'s hardcoded list with a real Retrofit-backed data source — `getJobs()` and `getJobById()` are already shaped for this swap.
-- Add search/filter on the Home feed (by title, location, or tag).
+- Replace `JobRepository`'s hardcoded list with a real Retrofit-backed data source — `getJobs()` and `getJobById()` are already shaped for this swap; search would then likely move server-side.
 - Add bookmarking/saving jobs, likely backed by local storage (Room or DataStore) rather than in-memory state.
-- Introduce a `domain`-layer `UseCase` (e.g. `GetJobsUseCase`, `ApplyToJobUseCase`) once business rules get more complex than "return the list" / "wait and flip a flag."
+- Introduce a `domain`-layer `UseCase` (e.g. `GetJobsUseCase`, `ApplyToJobUseCase`, `SearchJobsUseCase`) once business rules get more complex than what lives in the ViewModels today.
 - If the app grows past a handful of features, consider splitting `domain`/`data` into `core-model`/`core-network` modules, and each `presentation/ui/<feature>` folder into its own `feature-*` Gradle module (see multi-module architecture notes).
