@@ -103,7 +103,10 @@ fun HomeScreen(
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             items(homeState.jobs, key = { it.id }) { job ->
-                                JobCard(job = job, onClick = { onJobClick(job.id) })
+                                JobCard(job = job,
+                                    isBookmarked = job.id in homeState.bookmarkedIds,
+                                    onClick = { onJobClick(job.id) },
+                                    onBookmarkClick = { homeViewModel.toggleBookmark(job.id) })
                             }
                         }
                     }

@@ -15,7 +15,8 @@ sealed interface JobDetailUiState {
     object Loading : JobDetailUiState
     data class Found(
         val job: Job,
-        val applicationStatus: ApplicationStatus = ApplicationStatus.Idle
+        val applicationStatus: ApplicationStatus = ApplicationStatus.Idle,
+        val isBookmarked: Boolean = false
     ) : JobDetailUiState
     object NotFound : JobDetailUiState
 }
