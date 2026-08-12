@@ -15,5 +15,6 @@ import com.pawan.hirejetpack.domain.Job
 data class HomeUiState(
     val jobs: List<Job> = emptyList(),
     val searchQuery: String = "",
+    val bookmarkedIds: Set<String> = emptySet(),
     val isLoading: Boolean = false
 )

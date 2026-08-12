@@ -5,6 +5,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Work
 import androidx.compose.material3.*
@@ -26,7 +28,7 @@ import com.pawan.hirejetpack.domain.Job
  * preview and unit-test in isolation.
  */
 @Composable
-fun JobCard(job: Job, onClick: () -> Unit) {
+fun JobCard(job: Job,isBookmarked: Boolean, onClick: () -> Unit,onBookmarkClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -53,6 +55,13 @@ fun JobCard(job: Job, onClick: () -> Unit) {
                 Column {
                     Text(job.title, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium)
                     Text(job.company, style = MaterialTheme.typography.bodyMedium)
+                }
+                IconButton(onClick = onBookmarkClick) {
+                    Icon(
+                        imageVector = if (isBookmarked) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
+                        contentDescription = if (isBookmarked) "Remove bookmark" else "Bookmark this job",
+                        tint = if (isBookmarked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+                    )
                 }
             }
 
