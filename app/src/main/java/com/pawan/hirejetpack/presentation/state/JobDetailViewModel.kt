@@ -3,15 +3,19 @@ package com.pawan.hirejetpack.presentation.state
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pawan.hirejetpack.data.BookmarkRepository
 import com.pawan.hirejetpack.data.JobRepository
+import com.pawan.hirejetpack.domain.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
- * [JobDetailViewModel] — owns the state for a single job's detail screen.
+ * [JobDetailViewModel] — owns the state for a single job's detail screen:
+ * the job itself, its application status, and its bookmark status.
  *
  * KEYWORD: [SavedStateHandle]
  * Automatically injected by `viewModel()` when this ViewModel is created
@@ -21,27 +25,38 @@ import kotlinx.coroutines.launch
  * exactly why we read `jobId` from here instead of passing it straight
  * into the ViewModel's constructor from the Composable.
  *
- * Staff note: this ViewModel re-fetches the job from [JobRepository] using
- * only the id — it never trusts a `Job` object handed to it by the
- * previous screen. That's the whole point of passing ids through
- * navigation instead of whole objects: this ViewModel has exactly one
- * source of truth for "what is job X," no matter which screen navigated
- * here.
+ * Staff note on bookmarks: this ViewModel does NOT own bookmark state —
+ * [BookmarkRepository] does. Here, we just `collect` its
+ * [BookmarkRepository.bookmarkedIds] flow inside `init` and mirror
+ * whether THIS job's id is in that set into our own `_uiState`. That's
+ * the pattern for "read shared state, expose it as part of a
+ * screen-specific state class": collect the shared flow, don't copy its
+ * value once and forget about it — collecting keeps this screen in sync
+ * if the bookmark is toggled from the Home screen while this screen is
+ * still open (e.g. after backgrounding and returning).
  */
 class JobDetailViewModel(
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow<JobDetailUiState>(JobDetailUiState.Loading)
+    private val jobId: String? = savedStateHandle["jobId"]
+    private val job: Job? = jobId?.let { JobRepository.getJobById(it) }
+
+    private val _uiState = MutableStateFlow<JobDetailUiState>(
+        if (job != null) JobDetailUiState.Found(job) else JobDetailUiState.NotFound
+    )
     val uiState: StateFlow<JobDetailUiState> = _uiState.asStateFlow()
 
     init {
-        val jobId: String? = savedStateHandle["jobId"]
-        val job = jobId?.let { JobRepository.getJobById(it) }
-        _uiState.value = if (job != null) {
-            JobDetailUiState.Found(job)
-        } else {
-            JobDetailUiState.NotFound
+        if (job != null) {
+            viewModelScope.launch {
+                BookmarkRepository.bookmarkedIds.collect { bookmarkedIds ->
+                    val current = _uiState.value
+                    if (current is JobDetailUiState.Found) {
+                        _uiState.value = current.copy(isBookmarked = job.id in bookmarkedIds)
+                    }
+                }
+            }
         }
     }
 
@@ -66,11 +81,15 @@ class JobDetailViewModel(
         _uiState.value = currentState.copy(applicationStatus = ApplicationStatus.Submitting)
 
         viewModelScope.launch {
-            delay(900) // Simulated network round-trip
+            delay(900.milliseconds) // Simulated network round-trip
             val latest = _uiState.value
             if (latest is JobDetailUiState.Found) {
                 _uiState.value = latest.copy(applicationStatus = ApplicationStatus.Applied)
             }
         }
+    }
+
+    fun toggleBookmark() {
+        job?.let { BookmarkRepository.toggleBookmark(it.id) }
     }
 }
