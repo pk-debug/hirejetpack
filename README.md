@@ -13,6 +13,8 @@ A modern, single-activity Android application built with **Jetpack Compose**, im
 - **Job Detail Screen:** Tapping a job card navigates to a full detail view via a parameterized route (`job_detail_screen/{jobId}`), with dedicated Loading / Found / Not-Found states.
 - **Apply Flow:** Confirmation dialog → simulated submission → "Applied" state, modeled as its own `ApplicationStatus` sub-state (Idle / Submitting / Applied) so the button can never show a contradictory combination.
 - **Debounced Search:** Filter the job feed by title, company, location, or skill tag. Search input is debounced (300ms) via Kotlin Flow operators so filtering doesn't run on every single keystroke.
+- **Bookmarking:** Save/unsave jobs from either the feed or the detail screen. Bookmark status is shared app-wide via a repository-level `StateFlow`, so toggling it in one place is instantly reflected everywhere.
+- **Bookmarks:** Save a job from either the feed (`JobCard`) or the detail screen's top bar. Bookmark state lives in a single shared `BookmarkRepository`, so toggling it on one screen is instantly reflected on the other.
 - **Redesigned Profile Screen:** Gradient header, circular initials avatar, role badge, and info displayed in an elevated card.
 - **Type-Safe Navigation:** Built with `navigation-compose`, routes defined as a sealed class, backstack cleared correctly on login/logout.
 - **Reactive State Management:** Kotlin `StateFlow` per screen, collected safely in Compose via `collectAsState`.
@@ -50,16 +52,17 @@ com.pawan.hirejetpack/
 │   └── Job.kt                      # One job listing
 │
 ├── data/                           # Data sources
-│   └── JobRepository.kt            # Mock job data + getJobById() lookup (Retrofit-shaped for easy swap later)
+│   ├── JobRepository.kt            # Mock job data + getJobById() lookup (Retrofit-shaped for easy swap later)
+│   └── BookmarkRepository.kt       # Single source of truth for bookmarked job ids, shared across screens
 │
 ├── presentation/
 │   ├── state/                      # ViewModels + UI state classes, one pair per screen
 │   │   ├── LoginUiState.kt         # Idle / Loading / Success / Error
 │   │   ├── LoginViewModel.kt
-│   │   ├── HomeUiState.kt          # jobs (filtered) + searchQuery + isLoading
-│   │   ├── HomeViewModel.kt        # Debounced search via Flow: debounce → distinctUntilChanged → map → stateIn
-│   │   ├── JobDetailUiState.kt     # Loading / Found (+ ApplicationStatus) / NotFound
-│   │   ├── JobDetailViewModel.kt   # Reads jobId via SavedStateHandle, re-fetches from JobRepository, drives applyToJob()
+│   │   ├── HomeUiState.kt          # jobs (filtered) + searchQuery + bookmarkedIds + isLoading
+│   │   ├── HomeViewModel.kt        # combine(debounced search, BookmarkRepository.bookmarkedIds) -> stateIn
+│   │   ├── JobDetailUiState.kt     # Loading / Found (+ ApplicationStatus, isBookmarked) / NotFound
+│   │   ├── JobDetailViewModel.kt   # Reads jobId via SavedStateHandle; collects BookmarkRepository to stay in sync
 │   │   └── ApplicationStatus.kt    # Idle / Submitting / Applied sub-state for the apply flow
 │   │
 │   ├── navigation/                 # Routing
@@ -74,9 +77,9 @@ com.pawan.hirejetpack/
 │       ├── home/
 │       │   ├── HomeScreen.kt       # Drawer + search bar + job feed scaffold (incl. private JobSearchField)
 │       │   ├── AppDrawerContent.kt # Drawer panel contents
-│       │   └── JobCard.kt          # One row in the job feed — clickable, navigates to detail
+│       │   └── JobCard.kt          # One row in the feed — clickable, bookmarkable, navigates to detail
 │       ├── jobdetail/
-│       │   └── JobDetailScreen.kt  # Full job info, skill tags, apply confirmation dialog + status-aware button
+│       │   └── JobDetailScreen.kt  # Full job info, bookmark toggle, apply confirmation dialog + status-aware button
 │       └── profile/
 │           └── ProfileScreen.kt    # Gradient header + info card
 │
@@ -97,6 +100,7 @@ com.pawan.hirejetpack/
 | **Composition over Inheritance** | `HomeScreen` is built by composing `ModalNavigationDrawer` + `Scaffold` + `LazyColumn` + `JobCard`, not by extending a base screen class. `InitialsAvatar` is reused via composition in both the drawer and Profile screen. |
 | **Type-Safe Abstraction** | `Screen` is a `sealed class` of routes — the compiler catches typos that a raw string route name wouldn't. |
 | **DRY** | `InitialsAvatar` and `ProfileInfoRow` exist because the same visual pattern showed up twice — pulled out once, reused everywhere. |
+| **Single Source of Truth** | `BookmarkRepository` owns bookmark state, not `HomeViewModel` or `JobDetailViewModel` individually — both screens *observe* the same `StateFlow`, so a bookmark toggled on one screen is correct on the other without any manual syncing between them. |
 
 ### 2. Jetpack Compose Keywords
 
@@ -116,6 +120,7 @@ com.pawan.hirejetpack/
 | `SavedStateHandle` | Key-value bag holding the current destination's navigation arguments; injected automatically into a ViewModel and survives process death. |
 | `navArgument` | Declares a named, typed argument (e.g. `jobId: String`) on a `composable(...)` route, enabling parameterized navigation like `job_detail_screen/{jobId}`. |
 | `debounce` / `distinctUntilChanged` | Flow operators: `debounce` waits for a pause between emissions before passing one through (used here to avoid filtering on every keystroke); `distinctUntilChanged` skips emissions equal to the previous one. |
+| `combine` | Flow operator that recomputes an output whenever ANY of several input flows emit — used to merge the debounced search query with the shared bookmark flow into one `HomeUiState`. |
 | `stateIn` | Converts a cold `Flow` into a hot, shareable `StateFlow`, with a `SharingStarted` policy controlling when the upstream work actually runs. |
 
 ---
@@ -160,17 +165,18 @@ dependencies {
 5. Run the application on an Emulator or connected Physical Device (`Shift + F10`).
 6. Enter any sample email and password on the Login screen — this navigates to the Home screen's job feed.
 7. Type in the search bar to filter jobs by title, company, location, or skill (filtering kicks in ~300ms after you stop typing).
-8. Tap a job card to open its detail screen, then **Apply Now** to try the confirm → submit → applied flow (Back returns to the feed).
-9. Tap the menu icon (or the profile icon in the top bar) to open the drawer and reach the Profile screen.
+8. Tap the bookmark icon on any job card (or on the detail screen) to save it — notice the icon stays in sync between the feed and detail screen, since both read the same `BookmarkRepository`.
+9. Tap a job card to open its detail screen, then **Apply Now** to try the confirm → submit → applied flow (Back returns to the feed).
+10. Tap the menu icon (or the profile icon in the top bar) to open the drawer and reach the Profile screen.
 
 ---
 
 ## 🔮 Next Steps / Extension Ideas
 
+- Add a "Saved Jobs" screen (filter `BookmarkRepository.bookmarkedIds` against `JobRepository.getJobs()`), reachable from the drawer — the data plumbing already exists.
 - Add filter chips (by tag) alongside the text search, so users can narrow by skill with a tap instead of typing.
 - Replace the simulated `delay(900)` in `applyToJob()` with a real suspend repository call once a backend exists.
-- Persist application status (currently lost on process death / re-navigation) — e.g. a `Set<String>` of applied job ids in DataStore.
+- Persist application status and bookmarks (currently both lost on process death) — back `BookmarkRepository` and application status with DataStore instead of in-memory `Set`/state.
 - Replace `JobRepository`'s hardcoded list with a real Retrofit-backed data source — `getJobs()` and `getJobById()` are already shaped for this swap; search would then likely move server-side.
-- Add bookmarking/saving jobs, likely backed by local storage (Room or DataStore) rather than in-memory state.
-- Introduce a `domain`-layer `UseCase` (e.g. `GetJobsUseCase`, `ApplyToJobUseCase`, `SearchJobsUseCase`) once business rules get more complex than what lives in the ViewModels today.
+- Introduce a `domain`-layer `UseCase` (e.g. `GetJobsUseCase`, `ApplyToJobUseCase`, `ToggleBookmarkUseCase`) once business rules get more complex than what lives in the ViewModels today.
 - If the app grows past a handful of features, consider splitting `domain`/`data` into `core-model`/`core-network` modules, and each `presentation/ui/<feature>` folder into its own `feature-*` Gradle module (see multi-module architecture notes).

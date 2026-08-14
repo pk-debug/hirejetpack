@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Work
@@ -52,6 +54,17 @@ fun JobDetailScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    val foundState = uiState as? JobDetailUiState.Found
+                    if (foundState != null) {
+                        IconButton(onClick = { viewModel.toggleBookmark() }) {
+                            Icon(
+                                imageVector = if (foundState.isBookmarked) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
+                                contentDescription = if (foundState.isBookmarked) "Remove bookmark" else "Bookmark this job"
+                            )
+                        }
                     }
                 }
             )

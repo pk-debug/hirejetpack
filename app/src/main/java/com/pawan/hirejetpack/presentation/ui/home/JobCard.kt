@@ -28,7 +28,7 @@ import com.pawan.hirejetpack.domain.Job
  * preview and unit-test in isolation.
  */
 @Composable
-fun JobCard(job: Job,isBookmarked: Boolean, onClick: () -> Unit,onBookmarkClick: () -> Unit) {
+fun JobCard(job: Job, isBookmarked: Boolean, onClick: () -> Unit, onBookmarkClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -52,7 +52,7 @@ fun JobCard(job: Job,isBookmarked: Boolean, onClick: () -> Unit,onBookmarkClick:
                     )
                 }
                 Spacer(modifier = Modifier.width(12.dp))
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(job.title, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium)
                     Text(job.company, style = MaterialTheme.typography.bodyMedium)
                 }
