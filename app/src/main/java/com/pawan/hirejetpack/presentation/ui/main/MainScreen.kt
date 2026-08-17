@@ -2,6 +2,7 @@ package com.pawan.hirejetpack.presentation.ui.main
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -44,6 +45,7 @@ import com.pawan.hirejetpack.presentation.ui.savedjobs.SavedJobsScreen
  * site persists) — but keeping them here, visible in one place, makes the
  * shared-lifetime intent obvious at a glance instead of implicit.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
     loginViewModel: LoginViewModel,

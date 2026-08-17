@@ -7,13 +7,11 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.pawan.hirejetpack.presentation.state.HomeViewModel
 import com.pawan.hirejetpack.presentation.state.JobDetailViewModel
 import com.pawan.hirejetpack.presentation.state.LoginViewModel
-import com.pawan.hirejetpack.presentation.ui.home.HomeScreen
 import com.pawan.hirejetpack.presentation.ui.jobdetail.JobDetailScreen
 import com.pawan.hirejetpack.presentation.ui.login.LoginScreen
-import com.pawan.hirejetpack.presentation.ui.profile.ProfileScreen
+import com.pawan.hirejetpack.presentation.ui.main.MainScreen
 
 /**
  * KEYWORD: [@Composable]
@@ -28,11 +26,12 @@ import com.pawan.hirejetpack.presentation.ui.profile.ProfileScreen
  * Defines the navigation graph, mapping route strings to Composable
  * destinations.
  *
- * Flow: Login → Home (job feed, lands here after login) → Profile
- * (reached via the drawer or the profile icon in the top bar).
+ * Flow: Login -> Main (bottom-nav shell: Home / Saved / Applications /
+ * Profile tabs) -> JobDetail (pushed on top of Main, reachable from any
+ * tab that lists a job).
  *
- * Note: [LoginViewModel] is created once, here, and passed down to both
- * Home and Profile screens — that's what lets Profile show the same
+ * [LoginViewModel] is created once, here, and passed down into
+ * [MainScreen] — that's what lets the Profile tab show the same
  * logged-in user's data without re-fetching or duplicating state.
  */
 @Composable
@@ -48,23 +47,20 @@ fun AppNavigation() {
             LoginScreen(
                 viewModel = loginViewModel,
                 onLoginSuccess = {
-                    navController.navigate(Screen.Home.route) {
+                    navController.navigate(Screen.Main.route) {
                         popUpTo(Screen.Login.route) { inclusive = true } // Clear backstack
                     }
                 }
             )
         }
-        composable(Screen.Home.route) {
-            val homeViewModel: HomeViewModel = viewModel()
-            HomeScreen(
-                homeViewModel = homeViewModel,
+        composable(Screen.Main.route) {
+            MainScreen(
                 loginViewModel = loginViewModel,
-                onNavigateToProfile = { navController.navigate(Screen.Profile.route) },
                 onJobClick = { jobId -> navController.navigate(Screen.JobDetail.createRoute(jobId)) },
                 onLogout = {
                     loginViewModel.resetState()
                     navController.navigate(Screen.Login.route) {
-                        popUpTo(Screen.Home.route) { inclusive = true }
+                        popUpTo(Screen.Main.route) { inclusive = true }
                     }
                 }
             )
@@ -79,18 +75,6 @@ fun AppNavigation() {
             JobDetailScreen(
                 viewModel = jobDetailViewModel,
                 onBack = { navController.popBackStack() }
-            )
-        }
-        composable(Screen.Profile.route) {
-            ProfileScreen(
-                viewModel = loginViewModel,
-                onBack = { navController.popBackStack() },
-                onLogout = {
-                    loginViewModel.resetState()
-                    navController.navigate(Screen.Login.route) {
-                        popUpTo(Screen.Home.route) { inclusive = true }
-                    }
-                }
             )
         }
     }

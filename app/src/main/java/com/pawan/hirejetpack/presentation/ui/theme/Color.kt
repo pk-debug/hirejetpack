@@ -1,4 +1,4 @@
-package com.pawan.hirejetpack.ui.theme
+package com.pawan.hirejetpack.presentation.ui.theme
 
 import androidx.compose.ui.graphics.Color
 

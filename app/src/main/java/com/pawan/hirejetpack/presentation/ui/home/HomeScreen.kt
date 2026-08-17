@@ -1,128 +1,88 @@
 package com.pawan.hirejetpack.presentation.ui.home
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.pawan.hirejetpack.presentation.state.HomeViewModel
-import com.pawan.hirejetpack.presentation.state.LoginUiState
-import com.pawan.hirejetpack.presentation.state.LoginViewModel
-import kotlinx.coroutines.launch
 
 /**
- * [HomeScreen] — the app's landing screen after login: a drawer + job feed.
+ * [HomeScreenContent] — the Job Feed tab's body: search bar + job list.
  *
- * KEYWORD: [ModalNavigationDrawer]
- * Wraps `content` and slides `drawerContent` in from the left edge when
- * `drawerState.isOpen` is true. It does NOT manage open/close state itself
- * — that's [rememberDrawerState] below, which is why it's local UI state
- * here and not something either ViewModel needs to know about.
- *
- * KEYWORD: [rememberDrawerState] / [DrawerState]
- * Holds whether the drawer is Open or Closed. `.open()` / `.close()` are
- * suspend functions, hence [rememberCoroutineScope] to call them from a
- * click handler.
+ * Staff note: this composable has NO Scaffold and NO TopAppBar of its
+ * own — [com.pawan.hirejetpack.presentation.ui.main.MainScreen] owns the
+ * single shared Scaffold (top bar + bottom nav) that wraps every tab.
+ * Nesting a second Scaffold in here would draw a redundant app bar and
+ * fight MainScreen for the window insets it already consumed. This is
+ * the same "dumb, composed leaf" instinct as [JobCard], just applied at
+ * the screen level instead of the row level — the previous version of
+ * this file also owned a `ModalNavigationDrawer`; that responsibility
+ * moved to the bottom nav in MainScreen entirely, so it's gone from here.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(
-    homeViewModel: HomeViewModel,
-    loginViewModel: LoginViewModel,
-    onNavigateToProfile: () -> Unit,
-    onJobClick: (String) -> Unit,
-    onLogout: () -> Unit
+fun HomeScreenContent(
+    viewModel: HomeViewModel,
+    onJobClick: (String) -> Unit
 ) {
-    val homeState by homeViewModel.uiState.collectAsState()
-    val loginState by loginViewModel.uiState.collectAsState()
-    val user = (loginState as? LoginUiState.Success)?.user
+    val homeState by viewModel.uiState.collectAsState()
 
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-    val scope = rememberCoroutineScope()
+    Column(modifier = Modifier.fillMaxSize()) {
+        JobSearchField(
+            onQueryChanged = viewModel::onSearchQueryChanged,
+            onClear = viewModel::onClearSearch
+        )
 
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        drawerContent = {
-            AppDrawerContent(
-                user = user,
-                onProfileClick = {
-                    scope.launch { drawerState.close() }
-                    onNavigateToProfile()
-                },
-                onHomeClick = {
-                    scope.launch { drawerState.close() }
-                },
-                onLogoutClick = {
-                    scope.launch { drawerState.close() }
-                    onLogout()
+        when {
+            homeState.jobs.isNotEmpty() -> {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(homeState.jobs, key = { it.id }) { job ->
+                        JobCard(
+                            job = job,
+                            isBookmarked = job.id in homeState.bookmarkedIds,
+                            onClick = { onJobClick(job.id) },
+                            onBookmarkClick = { viewModel.toggleBookmark(job.id) }
+                        )
+                    }
                 }
-            )
-        }
-    ) {
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = { Text("Job Feed") },
-                    navigationIcon = {
-                        IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                            Icon(Icons.Filled.Menu, contentDescription = "Open navigation menu")
-                        }
-                    },
-                    actions = {
-                        IconButton(onClick = onNavigateToProfile) {
-                            Icon(Icons.Filled.AccountCircle, contentDescription = "Profile")
-                        }
-                    }
-                )
             }
-        ) { paddingValues ->
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-            ) {
-                JobSearchField(
-                    onQueryChanged = homeViewModel::onSearchQueryChanged,
-                    onClear = homeViewModel::onClearSearch
-                )
 
-                when {
-                    homeState.jobs.isNotEmpty() -> {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            items(homeState.jobs, key = { it.id }) { job ->
-                                JobCard(job = job,
-                                    isBookmarked = job.id in homeState.bookmarkedIds,
-                                    onClick = { onJobClick(job.id) },
-                                    onBookmarkClick = { homeViewModel.toggleBookmark(job.id) })
-                            }
-                        }
-                    }
+            homeState.searchQuery.isNotBlank() -> {
+                // Jobs exist overall, this specific search just has no matches
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("No jobs match \"${homeState.searchQuery}\".")
+                }
+            }
 
-                    homeState.searchQuery.isNotBlank() -> {
-                        // Jobs exist overall, this specific search just has no matches
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text("No jobs match \"${homeState.searchQuery}\".")
-                        }
-                    }
-
-                    else -> {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text("No jobs available right now.")
-                        }
-                    }
+            else -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("No jobs available right now.")
                 }
             }
         }
@@ -133,7 +93,7 @@ fun HomeScreen(
  * [JobSearchField] — the search input row.
  *
  * Staff note: this keeps its OWN local `remember { mutableStateOf(...) }`
- * for the text being typed, separate from [HomeUiState.searchQuery]. The
+ * for the text being typed, separate from `HomeUiState.searchQuery`. The
  * ViewModel's copy only updates after the 300ms debounce, but the
  * TextField itself must reflect every keystroke immediately — otherwise
  * the user would see their own typing lag behind their finger. Local UI
