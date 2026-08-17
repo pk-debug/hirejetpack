@@ -1,4 +1,4 @@
-package com.pawan.hirejetpack.presentation.ui.savedjobs
+package com.pawan.hirejetpack.presentation.ui.applications
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,29 +13,26 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.pawan.hirejetpack.presentation.state.SavedJobsViewModel
+import com.pawan.hirejetpack.presentation.state.ApplicationsViewModel
 import com.pawan.hirejetpack.presentation.ui.home.JobCard
 
 /**
- * [SavedJobsScreen] — the Saved tab: every bookmarked job.
- *
- * Staff note: `isBookmarked = true` is hardcoded on every [JobCard] call
- * here. That's not a shortcut — it's correct by construction: everything
- * on this screen came FROM the bookmarked set (see [SavedJobsViewModel]),
- * so it can't be anything else. Tapping the icon un-bookmarks it, which
- * removes it from [SavedJobsViewModel.uiState] on the very next emission
- * — no manual "remove this item from my local list" code needed anywhere.
+ * [ApplicationsScreen] — the Applications tab: every job the user has
+ * applied to, sourced from [com.pawan.hirejetpack.data.ApplicationsRepository]
+ * via [ApplicationsViewModel]. Reuses the exact same [JobCard] as Home and
+ * Saved — one leaf component, three different screens that happen to
+ * render it, each supplying a different filtered list.
  */
 @Composable
-fun SavedJobsScreen(
-    viewModel: SavedJobsViewModel,
+fun ApplicationsScreen(
+    viewModel: ApplicationsViewModel,
     onJobClick: (String) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
     if (uiState.jobs.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("No saved jobs yet — tap the bookmark icon on any job to save it here.")
+            Text("You haven't applied to any jobs yet.")
         }
     } else {
         LazyColumn(
@@ -46,7 +43,7 @@ fun SavedJobsScreen(
             items(uiState.jobs, key = { it.id }) { job ->
                 JobCard(
                     job = job,
-                    isBookmarked = true,
+                    isBookmarked = job.id in uiState.bookmarkedIds,
                     onClick = { onJobClick(job.id) },
                     onBookmarkClick = { viewModel.toggleBookmark(job.id) }
                 )
