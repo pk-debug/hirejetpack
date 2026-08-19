@@ -1,10 +1,13 @@
 package com.pawan.hirejetpack.presentation.state
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.pawan.hirejetpack.domain.UserProfile
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
 // ============================================================================
 // SECTION 2: VIEWMODEL / STATE HOLDER (OOP Encapsulation & SRP)
@@ -26,7 +29,7 @@ class LoginViewModel : ViewModel() {
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
 
     /**
-     * Simulates authentication request.
+     * Simulates authentication request using Coroutines.
      */
     fun performLogin(email: String, pass: String) {
         if (email.isBlank() || pass.isBlank()) {
@@ -34,15 +37,20 @@ class LoginViewModel : ViewModel() {
             return
         }
 
-        _uiState.value = LoginUiState.Loading
+        viewModelScope.launch {
+            _uiState.value = LoginUiState.Loading
+            
+            // Simulate network latency
+            delay(1500)
 
-        // Mock authentication success
-        val user = UserProfile(
-            name = "Pawan Kumar",
-            email = email,
-            role = "Android Developer"
-        )
-        _uiState.value = LoginUiState.Success(user)
+            // Mock authentication success
+            val user = UserProfile(
+                name = "Pawan Kumar",
+                email = email,
+                role = "Android Developer"
+            )
+            _uiState.value = LoginUiState.Success(user)
+        }
     }
 
     fun resetState() {
